@@ -1,0 +1,170 @@
+#!/usr/bin/env python3
+
+import requests
+import argparse
+from requests.adapters import HTTPAdapter
+from ast import literal_eval
+import json
+from os import path
+
+parser = argparse.ArgumentParser(description='Todaq protocol cli')
+parser.add_argument("-listAccounts",action="store_true")
+parser.add_argument("-createAccount")
+parser.add_argument("-getAccount")
+parser.add_argument("-createItem")
+parser.add_argument("-listItems")
+parser.add_argument("-exchange")
+parser.add_argument('--id','-id')
+parser.add_argument("--from","-from")
+parser.add_argument("--to","-to")
+args=parser.parse_args().__dict__
+
+api_key_path=path.join(path.dirname(path.realpath(__file__)),"api_key")
+api_key_file=open(api_key_path,"r")
+api_key=api_key_file.read()
+api_key_file.close()
+
+global userData
+
+def listAccounts():
+	url = 'https://api.todaqfinance.net/accounts?filter[active]=true&page=1&limit=100'
+	headers = {
+	  'Content-Type': 'application/json',
+	  'x-api-key': api_key
+	}
+	response = requests.request('GET', url, headers = headers, allow_redirects=False, timeout=3)
+	return response.text
+
+
+def createAccount():
+	url = 'https://api.todaqfinance.net/accounts'
+	payload={
+		"type": "account",
+		"data": {
+		"attributes": {
+			"account-type": "individual",
+			"admin-email": userData["email"],
+			"contact": {
+				   "email": userData["email"],
+				   "last-name": userData["last-name"],
+				   "first-name": userData["first-name"],
+				}
+			}
+		}
+	}
+	headers = {
+	  'Content-Type': 'application/json',
+	  'x-api-key': api_key
+	}
+	response = requests.request('POST', url, headers = headers, data = json.dumps(payload), allow_redirects=False, timeout=3)
+	userID=json.loads(response.text)['data'][0]['id']
+	return userID
+
+def getAccount():
+	url = 'https://api.todaqfinance.net/accounts/' + userData
+	headers = {
+	  'Content-Type': 'application/json',
+	  'x-api-key': api_key
+	}
+	response = requests.request('GET', url, headers = headers, allow_redirects=False, timeout=3)
+	return response.text
+
+def createItem():
+	url = 'https://api.todaqfinance.net/files'
+	payload={
+	    "data": {
+	    	"type":"file",
+	    	"attributes":{
+	    		"payload":userData
+	    	},
+	    	"relationships":{
+	    		"initial-account":{
+	    			"data":{
+		    			"type":"account",
+	    				"id":args['id']
+	    			}
+	    		},
+	    		"file-type": {
+	    			"data": {
+	    				"id":"ddbb8d2fa80f5eeb2c9071026038557571d65db62ba1d32a974c7932dc4a5fa2"
+	    			}
+	    		}
+	    	}
+	    }
+	}
+	headers = {
+	  'Content-Type': 'application/json',
+	  'x-api-key': api_key
+	}
+	response = requests.request('POST', url, headers = headers, data = json.dumps(payload), allow_redirects=False, timeout=3)
+	fileID=json.loads(response.text)['data'][0]['id']
+	return fileID
+
+def listItems():
+	url = 'https://api.todaqfinance.net/accounts/' + userData + '/files?page=1&limit=100'
+	headers = {
+	  'Content-Type': 'application/json',
+	  'x-api-key': api_key
+	}
+	response = requests.request('GET', url, headers = headers, allow_redirects=False, timeout=3)
+	return response.text
+
+def exchange():
+	url = 'https://api.todaqfinance.net/transactions'
+
+	payload={
+	    "data": {
+	    	"relationships":{
+	    		"sender":{
+	    			"data": {
+		    			"type":"account",
+	    				"id":args["from"]
+	    			}
+	    		},
+	    		"recipient":{
+	    			"data": {
+		    			"type":"account",
+	    				"id":args["to"]
+	    			}
+	    		},
+	    		"files":{
+	    			"data":[{"type":"file",
+			    			"id":userData}]
+	    		}
+	    	}
+	    }
+	}
+	headers = {
+	  'Content-Type': 'application/json',
+	  'x-api-key': api_key
+	}
+	response = requests.request('POST', url, headers = headers, data = json.dumps(payload), allow_redirects=False, timeout=3)
+	transactionID=json.loads(response.text)['data'][0]['id']
+	return transactionID
+
+router={
+	"listAccounts":listAccounts,
+	"createAccount":createAccount,
+	"createItem":createItem,
+	"getAccount":getAccount,
+	"listItems":listItems,
+	"exchange":exchange
+}
+
+def main():
+	keys=list(args.keys())
+	for key in keys:
+		if(args[key]):
+			global userData
+			try:
+				userData=literal_eval(args[key])
+			except:
+				userData=args[key]
+			else:
+				pass
+			if key not in router:continue
+			r=router[key]()
+			print(r)
+
+if(__name__=="__main__"):
+	main()
