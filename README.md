@@ -18,7 +18,7 @@ Todaq command line interface
 
 ## Create Item
 ###### sample input (takes user id and object)
-  todaq -createItem 6f859919-e4a3-4fee-8b9b-90e08c941c8b '{"brand":"BigCosctco","serialNumber":"unique-id123"}'
+  todaq -createItem 6f859919-e4a3-4fee-8b9b-90e08c941c8b -id '{"brand":"BigCosctco","serialNumber":"unique-id123"}'
 ###### sample output (returns item id as string)
   d4cb5630007dbd25ea73723ae2831b65a032020ece3aef419fa523858ea60d75
  
